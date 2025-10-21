@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import importlib
 import importlib.util
 import sys
 from pathlib import Path
@@ -11,32 +12,50 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 PACKAGE_ROOT = PROJECT_ROOT / "eclipse_app"
 
 # Always ensure the project root is at the front of sys.path so bundled modules resolve.
-sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def _load_local_package() -> None:
     """Fallback importer for environments that omit the project root from sys.path."""
-    if "eclipse_app" in sys.modules or not PACKAGE_ROOT.exists():
-        return
+    sys.modules.pop("eclipse_app", None)
+
+    package_init = PACKAGE_ROOT / "__init__.py"
+    if not package_init.exists():
+        raise ModuleNotFoundError(
+            f"Could not locate local eclipse_app package at {package_init}"
+        )
 
     spec = importlib.util.spec_from_file_location(
         "eclipse_app",
-        PACKAGE_ROOT / "__init__.py",
+        package_init,
         submodule_search_locations=[str(PACKAGE_ROOT)],
     )
-    if spec and spec.loader:
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
+    if not spec or not spec.loader:
+        raise ModuleNotFoundError("Unable to construct spec for eclipse_app package.")
+
+    module = importlib.util.module_from_spec(spec)
+    module.__file__ = str(package_init)
+    module.__path__ = [str(PACKAGE_ROOT)]
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+
+
+def _import_dependencies():
+    importlib.import_module("eclipse_app")
+    matcher = importlib.import_module("eclipse_app.eclipse_matcher")
+    resolver = importlib.import_module("eclipse_app.location_resolver")
+    return matcher, resolver
 
 
 try:
-    from eclipse_app import eclipse_matcher
-    from eclipse_app.location_resolver import LocationQuery, parse_location_input
+    eclipse_matcher, location_resolver = _import_dependencies()
 except ModuleNotFoundError:
     _load_local_package()
-    from eclipse_app import eclipse_matcher
-    from eclipse_app.location_resolver import LocationQuery, parse_location_input
+    eclipse_matcher, location_resolver = _import_dependencies()
+
+LocationQuery = location_resolver.LocationQuery
+parse_location_input = location_resolver.parse_location_input
 
 
 EVENT_CARD_CSS = """
