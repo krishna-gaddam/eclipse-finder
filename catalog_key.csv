@@ -1,0 +1,8 @@
+Field,Description
+Date,Date of greatest eclipse (Gregorian calendar)
+Type,Type of eclipse (Solar: Total or Annular; Lunar: Total)
+Saros,Saros cycle number identifying eclipse family
+Magnitude,Fraction of Sun or Moon's diameter obscured at greatest eclipse
+Latitude,Latitude (°) of greatest eclipse point on Earth
+Longitude,Longitude (°) of greatest eclipse point on Earth
+Duration,Duration of totality or annularity (Solar) or total phase (Lunar)
