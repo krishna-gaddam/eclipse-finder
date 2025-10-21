@@ -1,88 +1,53 @@
 from __future__ import annotations
 
 from datetime import date
-import importlib
 import importlib.util
 import sys
 from pathlib import Path
-from typing import Optional
 
 import streamlit as st
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-PACKAGE_CANDIDATES = (
-    PROJECT_ROOT / "eclipse_app",
-    PROJECT_ROOT / "eclipse-app",
-)
+PACKAGE_DIR = PROJECT_ROOT / "eclipse-app"
+PACKAGE_NAME = "eclipse_app"
 
 
-def _find_package_dir() -> Optional[Path]:
-    for candidate in PACKAGE_CANDIDATES:
-        if candidate.exists():
-            return candidate
-    return None
+def _ensure_local_package() -> None:
+    """Expose the hyphenated package directory as `eclipse_app` for imports."""
+    if PACKAGE_NAME in sys.modules:
+        return
+    if not PACKAGE_DIR.exists():
+        return
 
-
-def _ensure_sys_path() -> None:
-    root_str = str(PROJECT_ROOT)
-    if root_str not in sys.path:
-        sys.path.insert(0, root_str)
-
-
-def _register_package(package_dir: Path) -> None:
-    package_init = package_dir / "__init__.py"
+    package_init = PACKAGE_DIR / "__init__.py"
     if not package_init.exists():
         raise ModuleNotFoundError(
-            f"Found potential package directory at {package_dir}, "
-            "but it does not contain an __init__.py file."
+            f"Expected {package_init} alongside the Streamlit app."
         )
 
     spec = importlib.util.spec_from_file_location(
-        "eclipse_app",
+        PACKAGE_NAME,
         package_init,
-        submodule_search_locations=[str(package_dir)],
+        submodule_search_locations=[str(PACKAGE_DIR)],
     )
     if not spec or not spec.loader:
         raise ModuleNotFoundError(
-            f"Unable to construct module spec for package at {package_dir}"
+            f"Could not build an import spec for {PACKAGE_DIR}."
         )
 
     module = importlib.util.module_from_spec(spec)
-    module.__file__ = str(package_init)
-    module.__path__ = [str(package_dir)]
-    sys.modules["eclipse_app"] = module
+    sys.modules[PACKAGE_NAME] = module
     spec.loader.exec_module(module)
 
 
-def _load_local_package() -> None:
-    sys.modules.pop("eclipse_app", None)
-    package_dir = _find_package_dir()
-    if not package_dir:
-        raise ModuleNotFoundError(
-            "Could not locate a local eclipse_app package. "
-            "Ensure the repository includes either an 'eclipse_app' "
-            "or 'eclipse-app' directory."
-        )
-    _register_package(package_dir)
+_ensure_local_package()
 
 
-def _import_dependencies():
-    importlib.import_module("eclipse_app")
-    matcher = importlib.import_module("eclipse_app.eclipse_matcher")
-    resolver = importlib.import_module("eclipse_app.location_resolver")
-    return matcher, resolver
-
-
-_ensure_sys_path()
-
-try:
-    eclipse_matcher, location_resolver = _import_dependencies()
-except ModuleNotFoundError:
-    _load_local_package()
-    eclipse_matcher, location_resolver = _import_dependencies()
-
-LocationQuery = location_resolver.LocationQuery
-parse_location_input = location_resolver.parse_location_input
+from eclipse_app import eclipse_matcher  # type: ignore  # noqa: E402
+from eclipse_app.location_resolver import (  # type: ignore  # noqa: E402
+    LocationQuery,
+    parse_location_input,
+)
 
 
 EVENT_CARD_CSS = """
