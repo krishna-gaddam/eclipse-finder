@@ -1,17 +1,42 @@
 from __future__ import annotations
 
 from datetime import date
+import importlib.util
 import sys
 from pathlib import Path
 
 import streamlit as st
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+PACKAGE_ROOT = PROJECT_ROOT / "eclipse_app"
 
-from eclipse_app import eclipse_matcher
-from eclipse_app.location_resolver import LocationQuery, parse_location_input
+# Always ensure the project root is at the front of sys.path so bundled modules resolve.
+sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def _load_local_package() -> None:
+    """Fallback importer for environments that omit the project root from sys.path."""
+    if "eclipse_app" in sys.modules or not PACKAGE_ROOT.exists():
+        return
+
+    spec = importlib.util.spec_from_file_location(
+        "eclipse_app",
+        PACKAGE_ROOT / "__init__.py",
+        submodule_search_locations=[str(PACKAGE_ROOT)],
+    )
+    if spec and spec.loader:
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        spec.loader.exec_module(module)
+
+
+try:
+    from eclipse_app import eclipse_matcher
+    from eclipse_app.location_resolver import LocationQuery, parse_location_input
+except ModuleNotFoundError:
+    _load_local_package()
+    from eclipse_app import eclipse_matcher
+    from eclipse_app.location_resolver import LocationQuery, parse_location_input
 
 
 EVENT_CARD_CSS = """
