@@ -1,53 +1,11 @@
 from __future__ import annotations
 
 from datetime import date
-import importlib.util
-import sys
-from pathlib import Path
 
 import streamlit as st
 
-PROJECT_ROOT = Path(__file__).resolve().parent
-PACKAGE_DIR = PROJECT_ROOT / "eclipse-app"
-PACKAGE_NAME = "eclipse_app"
-
-
-def _ensure_local_package() -> None:
-    """Expose the hyphenated package directory as `eclipse_app` for imports."""
-    if PACKAGE_NAME in sys.modules:
-        return
-    if not PACKAGE_DIR.exists():
-        return
-
-    package_init = PACKAGE_DIR / "__init__.py"
-    if not package_init.exists():
-        raise ModuleNotFoundError(
-            f"Expected {package_init} alongside the Streamlit app."
-        )
-
-    spec = importlib.util.spec_from_file_location(
-        PACKAGE_NAME,
-        package_init,
-        submodule_search_locations=[str(PACKAGE_DIR)],
-    )
-    if not spec or not spec.loader:
-        raise ModuleNotFoundError(
-            f"Could not build an import spec for {PACKAGE_DIR}."
-        )
-
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[PACKAGE_NAME] = module
-    spec.loader.exec_module(module)
-
-
-_ensure_local_package()
-
-
-from eclipse_app import eclipse_matcher  # type: ignore  # noqa: E402
-from eclipse_app.location_resolver import (  # type: ignore  # noqa: E402
-    LocationQuery,
-    parse_location_input,
-)
+from eclipse_app import eclipse_matcher
+from eclipse_app.location_resolver import LocationQuery, parse_location_input
 
 
 EVENT_CARD_CSS = """
