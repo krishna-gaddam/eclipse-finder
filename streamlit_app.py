@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from datetime import date
+import sys
+from pathlib import Path
 
 import streamlit as st
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from eclipse_app import eclipse_matcher
 from eclipse_app.location_resolver import LocationQuery, parse_location_input
